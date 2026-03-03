@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>MedTrack</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // 1. Polyfill process and global for libraries that expect Node-like env
+      window.process = { 
+        env: { 
+          NODE_ENV: 'development',
+          // Prevent libraries from thinking they need to polyfill fetch
+          FORCE_BROWSER: 'true' 
+        },
+        version: ''
+      };
+      window.global = window;
+
+      // 2. Error Trap for White Screen of Death
+      window.addEventListener('error', function(e) {
+        const root = document.getElementById('root');
+        if (root && root.innerHTML === '') {
+            const errorBox = document.createElement('div');
+            errorBox.style.padding = '20px';
+            errorBox.style.color = 'red';
+            errorBox.style.fontFamily = 'monospace';
+            errorBox.style.background = '#ffebee';
+            errorBox.innerText = 'Application Error: ' + e.message;
+            document.body.prepend(errorBox);
+        }
+        console.error("Global Error Caught:", e);
+      });
+      
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: '#10b981', // Emerald 500
+              secondary: '#3b82f6', // Blue 500
+              accent: '#f59e0b', // Amber 500
+              background: '#f8fafc',
+              surface: '#ffffff'
+            },
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+          },
+        },
+      }
+    </script>
+    <style>
+      /* Hide scrollbar for Chrome, Safari and Opera */
+      .no-scrollbar::-webkit-scrollbar {
+          display: none;
+      }
+      /* Hide scrollbar for IE, Edge and Firefox */
+      .no-scrollbar {
+          -ms-overflow-style: none;  /* IE and Edge */
+          scrollbar-width: none;  /* Firefox */
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://esm.sh/@google/genai@0.2.1",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.45.4",
+    "react": "https://esm.sh/react@18.3.1",
+    "react/": "https://esm.sh/react@18.3.1/",
+    "react-dom": "https://esm.sh/react-dom@18.3.1",
+    "react-dom/": "https://esm.sh/react-dom@18.3.1/",
+    "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+    "recharts": "https://esm.sh/recharts@2.12.7?external=react,react-dom",
+    "lucide-react": "https://esm.sh/lucide-react@0.446.0?external=react",
+    "@react-pdf/renderer": "https://esm.sh/@react-pdf/renderer@3.4.4?bundle&external=react,react-dom"
+  }
+}
+</script>
+</head>
+  <body class="bg-background text-slate-800 antialiased selection:bg-primary selection:text-white">
+    <div id="root"></div>
+    <script type="module" src="./index.tsx"></script>
+  </body>
+</html>

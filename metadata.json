@@ -1,0 +1,7 @@
+{
+  "name": "MedTrack",
+  "description": "A comprehensive medical patient tracking application focusing on weight loss, medication adherence, and bioimpedance analysis.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
