@@ -29,15 +29,36 @@ class DataService {
     return mockPatients.filter(p => p.doctor_id === doctorId);
   }
 
-  // Find patient by email (Mock Auth helper)
+  // Find patient by Supabase Auth user_id
+  async getPatientByUserId(userId: string): Promise<Patient | null> {
+    if (isSupabaseConfigured && supabase) {
+      const { data } = await supabase.from('patients').select('*').eq('user_id', userId).single();
+      return data ?? null;
+    }
+    return null;
+  }
+
+  // Find patient by email
   async getPatientByEmail(email: string): Promise<Patient | null> {
     if (isSupabaseConfigured && supabase) {
-        // In real Supabase, we query by auth user_id, but for this hybrid setup:
-        const { data } = await supabase.from('patients').select('*').eq('email', email).single();
-        return data;
+      const { data } = await supabase.from('patients').select('*').eq('email', email).single();
+      return data ?? null;
     }
     await delay(500);
     return mockPatients.find(p => p.email === email) || null;
+  }
+
+  // Create a new patient profile (used on signup)
+  async createPatient(patient: Omit<Patient, 'id'>): Promise<Patient | null> {
+    if (isSupabaseConfigured && supabase) {
+      const { data, error } = await supabase.from('patients').insert(patient).select().single();
+      if (error) console.error(error);
+      return data ?? null;
+    }
+    await delay(300);
+    const newPatient: Patient = { ...patient, id: Math.floor(Math.random() * 10000) };
+    mockPatients.push(newPatient);
+    return newPatient;
   }
 
   // --- Doses ---

@@ -6,15 +6,23 @@ import { Patient } from '../types';
 interface AuthContextType {
   user: Patient | null;
   loading: boolean;
-  signInWithEmail: (email: string) => Promise<{ error: any }>;
+  signInWithPassword: (email: string, password: string) => Promise<{ error: any }>;
+  signUpWithPassword: (
+    email: string,
+    password: string,
+    name: string,
+    age: number,
+    weightGoal: number
+  ) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
-  mockLogin: (role: 'patient' | 'doctor') => Promise<void>; // For demo without Supabase
+  mockLogin: (role: 'patient' | 'doctor') => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
-  signInWithEmail: async () => ({ error: null }),
+  signInWithPassword: async () => ({ error: null }),
+  signUpWithPassword: async () => ({ error: null }),
   signOut: async () => {},
   mockLogin: async () => {},
 });
@@ -24,54 +32,86 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check active session on load
     const initSession = async () => {
       if (isSupabaseConfigured && supabase) {
         const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user?.email) {
-           const profile = await dataService.getPatientByEmail(session.user.email);
-           if (profile) setUser(profile);
+        if (session?.user) {
+          const profile = await dataService.getPatientByUserId(session.user.id)
+            ?? await dataService.getPatientByEmail(session.user.email ?? '');
+          if (profile) setUser(profile);
         }
       } else {
-        // Check local storage for mock session
         const stored = localStorage.getItem('medtrack_mock_user');
         if (stored) {
-            setUser(JSON.parse(stored));
+          setUser(JSON.parse(stored));
         }
       }
       setLoading(false);
     };
     initSession();
 
-    // Listen for auth changes
     if (isSupabaseConfigured && supabase) {
       const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-        if (event === 'SIGNED_IN' && session?.user?.email) {
-            const profile = await dataService.getPatientByEmail(session.user.email);
-            if (profile) setUser(profile);
+        if (event === 'SIGNED_IN' && session?.user) {
+          const profile = await dataService.getPatientByUserId(session.user.id)
+            ?? await dataService.getPatientByEmail(session.user.email ?? '');
+          if (profile) setUser(profile);
         } else if (event === 'SIGNED_OUT') {
-            setUser(null);
+          setUser(null);
         }
       });
       return () => authListener.subscription.unsubscribe();
     }
   }, []);
 
-  const signInWithEmail = async (email: string) => {
-    if (isSupabaseConfigured && supabase) {
-      return await supabase.auth.signInWithOtp({ email });
-    } else {
-      console.warn("Supabase not configured. Use mock login.");
-      return { error: { message: "Supabase not configured" } };
+  const signInWithPassword = async (email: string, password: string) => {
+    if (!isSupabaseConfigured || !supabase) {
+      return { error: { message: 'Supabase não configurado. Use o modo demo.' } };
     }
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (!error && data.user) {
+      const profile = await dataService.getPatientByUserId(data.user.id)
+        ?? await dataService.getPatientByEmail(email);
+      if (profile) setUser(profile);
+    }
+    return { error };
+  };
+
+  const signUpWithPassword = async (
+    email: string,
+    password: string,
+    name: string,
+    age: number,
+    weightGoal: number
+  ) => {
+    if (!isSupabaseConfigured || !supabase) {
+      return { error: { message: 'Supabase não configurado. Use o modo demo.' } };
+    }
+
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) return { error };
+
+    if (data.user) {
+      const newPatient = await dataService.createPatient({
+        user_id: data.user.id,
+        name,
+        email,
+        age,
+        weight_goal_kg: weightGoal,
+        role: 'patient',
+      });
+      if (newPatient) setUser(newPatient);
+    }
+
+    return { error: null };
   };
 
   const mockLogin = async (role: 'patient' | 'doctor') => {
     const email = role === 'doctor' ? 'doctor@medtrack.app' : 'paciente@medtrack.app';
     const profile = await dataService.getPatientByEmail(email);
     if (profile) {
-        setUser(profile);
-        localStorage.setItem('medtrack_mock_user', JSON.stringify(profile));
+      setUser(profile);
+      localStorage.setItem('medtrack_mock_user', JSON.stringify(profile));
     }
   };
 
@@ -84,7 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithEmail, signOut, mockLogin }}>
+    <AuthContext.Provider value={{ user, loading, signInWithPassword, signUpWithPassword, signOut, mockLogin }}>
       {children}
     </AuthContext.Provider>
   );
